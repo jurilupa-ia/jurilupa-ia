@@ -1,4 +1,14 @@
 {
   "version": 1,
-  "entries": []
+  "entries": [
+    {
+      "slug": "ia-validez-recurso-moron",
+      "title": "IA y validez de los escritos: el caso de Morón",
+      "summary": "La Cámara penal de Morón distinguió el uso de IA, la calidad de los argumentos y la responsabilidad profesional. Un caso para estudiar cómo controlar un escrito sin trasladar automáticamente sus defectos a la persona defendida.",
+      "published_date": "2026-10-24",
+      "article_sha256": "3e05359012684d8bb95fd0fcd44861ce0408f001e373b64cfcb1576491fd9100",
+      "create_key": "7024cf74-8bd6-48d4-a1dc-6b5639e9a8d6",
+      "send_key": "64dbacef-ed6a-42c5-bc2a-ea4d588e47f0"
+    }
+  ]
 }
