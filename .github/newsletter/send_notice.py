@@ -31,7 +31,10 @@ BACKLOG = frozenset({
     "chatgpt-razonamiento-judicial-t323",
     "supervision-profesional-ayinde-al-haroun",
 })
-ACCEPTED = {"about_to_send", "in_flight", "throttled", "resending", "sent"}
+# Provider acceptance is not delivery. Buttondown can queue a publish request
+# as scheduled before dispatch; the durable send reservation still prevents retries.
+PENDING = frozenset({"scheduled", "about_to_send", "in_flight", "throttled", "resending"})
+ACCEPTED = PENDING | {"sent"}
 SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 MAX_BYTES = 2_000_000
@@ -323,6 +326,13 @@ def validate_draft(entry, email):
         raise Stop("Unexpected audience filters; manual review required.")
 
 
+def log_submission(slug, status, *, already_submitted=False):
+    prefix = "Already submitted; no repeat:" if already_submitted else "Provider submission status:"
+    detail = ("pending; delivery not confirmed" if status in PENDING else
+              "provider reports sent; individual delivery not verified")
+    print(prefix, slug, status, "(" + detail + ")")
+
+
 def process(entry, sha, mode, gh, bd, verify=verify_publication):
     slug = entry["slug"]
     if mode == "preview":
@@ -337,7 +347,7 @@ def process(entry, sha, mode, gh, bd, verify=verify_publication):
     email = bd.existing(entry)
     if gh.exists("send", slug):
         if email and email.get("status") in ACCEPTED:
-            print("Already submitted; no repeat:", slug, email["status"])
+            log_submission(slug, email["status"], already_submitted=True)
             return email["status"]
         raise Stop("Dispatch reservation exists with an uncertain/failed outcome; inspect Buttondown. Never remove it blindly.")
     if email and email.get("status") != "draft":
@@ -368,7 +378,7 @@ def process(entry, sha, mode, gh, bd, verify=verify_publication):
     status = result.get("status")
     if status not in ACCEPTED:
         raise Stop("Send outcome is uncertain/failed; reservation retained. Inspect Buttondown without resending.")
-    print("Provider submission status:", slug, status)
+    log_submission(slug, status)
     return status
 
 

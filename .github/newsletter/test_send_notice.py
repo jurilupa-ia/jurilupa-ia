@@ -41,6 +41,7 @@ class FakeBD:
         self.creates = self.sends = 0
         self.fail_create = self.fail_send = False
         self.provider_accepts_before_timeout = False
+        self.publish_status = 'about_to_send'
         self.cap_error = False
 
     def existing(self, e):
@@ -66,9 +67,9 @@ class FakeBD:
         self.sends += 1
         if self.fail_send:
             if self.provider_accepts_before_timeout:
-                self.email['status'] = 'about_to_send'
+                self.email['status'] = self.publish_status
             raise n.Stop('Timeout')
-        self.email['status'] = 'about_to_send'
+        self.email['status'] = self.publish_status
         return self.email
 
 
@@ -180,6 +181,73 @@ class FlowTests(unittest.TestCase):
         self.bd.email['status'] = 'sent'
         self.run_flow()
         self.assertEqual((self.bd.creates, self.bd.sends), (1, 1))
+
+    def test_scheduled_publish_is_pending_not_delivered_and_never_repeated(self):
+        self.bd.publish_status = 'scheduled'
+        self.assertEqual(self.run_flow(), 'scheduled')
+        self.assertIn('pending; delivery not confirmed', self.output.getvalue())
+        self.assertNotIn('provider reports sent', self.output.getvalue())
+        self.assertEqual(self.gh.calls, ['create', 'send'])
+        saved_tags = self.gh.tags.copy()
+        self.assertEqual(self.run_flow(), 'scheduled')
+        self.assertEqual(self.gh.tags, saved_tags)
+        self.assertEqual((self.bd.creates, self.bd.sends), (1, 1))
+
+    def test_reserved_scheduled_and_sent_are_read_only(self):
+        self.bd.email = {**n.payload(self.e), 'id': 'em_123'}
+        self.gh.tags = {('create', self.e['slug']), ('send', self.e['slug'])}
+        for status in ('scheduled', 'sent'):
+            with self.subTest(status=status):
+                self.bd.email['status'] = status
+                with patch.object(self.bd, 'free_cap', side_effect=AssertionError('Subscriber read')), \
+                     patch.object(self.bd, 'create', side_effect=AssertionError('Create')), \
+                     patch.object(self.bd, 'publish', side_effect=AssertionError('Publish')), \
+                     patch.object(self.bd, 'retrieve', side_effect=AssertionError('Draft read')), \
+                     patch.object(self.gh, 'reserve', side_effect=AssertionError('Reservation')):
+                    self.assertEqual(self.run_flow(verify=lambda e, sha: self.fail('Revalidation')), status)
+        self.assertIn('Already submitted; no repeat:', self.output.getvalue())
+        self.assertIn('provider reports sent; individual delivery not verified', self.output.getvalue())
+        self.assertEqual(self.gh.calls, [])
+        self.assertEqual((self.bd.creates, self.bd.sends), (0, 0))
+
+    def test_scheduled_after_timeout_reconciles_without_retry(self):
+        self.bd.publish_status = 'scheduled'
+        self.bd.fail_send = self.bd.provider_accepts_before_timeout = True
+        with self.assertRaises(n.Stop): self.run_flow()
+        self.assertTrue(self.gh.exists('send', self.e['slug']))
+        self.assertEqual(self.run_flow(), 'scheduled')
+        self.assertEqual((self.bd.creates, self.bd.sends), (1, 1))
+        self.assertEqual(self.gh.calls, ['create', 'send'])
+
+    def test_unaccepted_publish_retains_reservation_and_never_retries(self):
+        for status in ('draft', 'errored', 'cancelled', 'unknown', '', None):
+            with self.subTest(status=status):
+                gh, bd = FakeGH(), FakeBD()
+                bd.publish_status = status
+                for _ in range(2):
+                    with self.assertRaises(n.Stop):
+                        n.process(self.e, SHA, 'live', gh, bd, lambda e, sha: None)
+                self.assertEqual((bd.creates, bd.sends), (1, 1))
+                self.assertEqual(gh.calls, ['create', 'send'])
+                self.assertTrue(gh.exists('send', self.e['slug']))
+
+    def test_scheduled_without_send_reservation_is_not_taken_over(self):
+        self.run_flow('draft')
+        self.bd.email['status'] = 'scheduled'
+        with self.assertRaises(n.Stop): self.run_flow()
+        self.assertEqual((self.bd.creates, self.bd.sends), (1, 0))
+        self.assertEqual(self.gh.calls, ['create'])
+
+    def test_all_accepted_pending_states_have_no_delivery_claim(self):
+        for status in ('scheduled', 'about_to_send', 'in_flight', 'throttled', 'resending'):
+            with self.subTest(status=status):
+                gh, bd = FakeGH(), FakeBD()
+                bd.publish_status = status
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    self.assertEqual(n.process(self.e, SHA, 'live', gh, bd, lambda e, sha: None), status)
+                self.assertIn('pending; delivery not confirmed', output.getvalue())
+                self.assertNotIn('provider reports sent', output.getvalue())
 
     def test_failed_publication_has_no_mutations(self):
         def fail(e, sha): raise n.Stop('Not published')
