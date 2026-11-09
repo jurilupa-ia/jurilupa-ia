@@ -9,6 +9,15 @@
       "article_sha256": "3e05359012684d8bb95fd0fcd44861ce0408f001e373b64cfcb1576491fd9100",
       "create_key": "7024cf74-8bd6-48d4-a1dc-6b5639e9a8d6",
       "send_key": "64dbacef-ed6a-42c5-bc2a-ea4d588e47f0"
+    },
+    {
+      "slug": "jurados-inteligencia-artificial-stone-logsdon",
+      "title": "¿Puede un jurado consultar una IA? El caso Stone y Logsdon",
+      "summary": "Un tribunal federal de Kentucky incluyó expresamente la IA en sus instrucciones preventivas al jurado. Una lectura sobre información externa, deliberación y cómo canalizar las dudas durante un juicio.",
+      "published_date": "2026-11-05",
+      "article_sha256": "903ffea466120c5691b66fbe08b247583f1c992a8b671f5d0420da0cfc103f48",
+      "create_key": "6c312968-3553-45e0-9ffd-8c68d3095f59",
+      "send_key": "f292730f-7a81-4537-ab93-09251afe606c"
     }
   ]
 }
