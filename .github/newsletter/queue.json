@@ -18,6 +18,15 @@
       "article_sha256": "903ffea466120c5691b66fbe08b247583f1c992a8b671f5d0420da0cfc103f48",
       "create_key": "6c312968-3553-45e0-9ffd-8c68d3095f59",
       "send_key": "f292730f-7a81-4537-ab93-09251afe606c"
+    },
+    {
+      "slug": "ia-escritos-extensos-hancox",
+      "title": "Inteligencia artificial y escritos demasiado extensos: el caso Hancox",
+      "summary": "El tribunal de apelación laboral británico examinó un escrito de 300 páginas preparado con ChatGPT. Una lectura sobre claridad, pertinencia y responsabilidad al revisar argumentos, más allá de comprobar que las citas existan.",
+      "published_date": "2026-11-17",
+      "article_sha256": "dc70372bfbdbc85124a76c3faa332e11f7d7faf5784535397a44ad1248a311df",
+      "create_key": "4ee2e7e1-9f55-44c1-8aa6-3772c90d964a",
+      "send_key": "67ab5ea6-3594-410c-bebc-24fda0afef2a"
     }
   ]
 }
